@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MetaScan: {{ target }}</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg-dark: #000000;
+            --card-bg: #000000;
+            --card-border: #ffffff;
+            --text-color: #ffffff;
+            --accent: #2EA043;
+            --error: #d73a49;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-color);
+            font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            overflow-x: hidden;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1rem;
+        }
+
+        @media (min-width: 640px) {
+            body {
+                padding: 2rem;
+            }
+        }
+
+        main {
+            max-width: 80rem;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+
+        .tactical-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(8px);
+            position: relative;
+        }
+
+        @keyframes TerminalBoot {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .boot-animate {
+            animation: TerminalBoot 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+
+        .tactical-text {
+            font-size: 13px !important;
+            line-height: 1.4 !important;
+        }
+
+        /* Custom scrollbar for horizontal scrolling on mobile */
+        ::-webkit-scrollbar {
+            height: 6px;
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #ffffff;
+            border-radius: 0px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent);
+        }
+
+        /* Hide default details marker */
+        details > summary {
+            list-style: none;
+        }
+        details > summary::-webkit-details-marker {
+            display: none;
+        }
+
+        /* Expand toggle button / chevron */
+        .meta-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            user-select: none;
+            font-size: 11px;
+            color: #ffffff;
+            border: 1px solid transparent;
+            background: transparent;
+            transition: border-color 0.15s, transform 0.2s;
+            line-height: 1;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+        .meta-toggle:hover {
+            border-color: #ffffff;
+        }
+
+        details[open] summary .group-open\:rotate-180 {
+            transform: rotate(180deg);
+        }
+
+        /* Utility classes (offline fallback for Tailwind) */
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .flex-1 { flex: 1 1 0%; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .w-full { width: 100%; }
+        .min-w-0 { min-width: 0; }
+        .min-w-\[640px\] { min-width: 640px; }
+        .min-w-\[700px\] { min-width: 700px; }
+        .min-h-screen { min-height: 100vh; }
+        .max-w-7xl { max-width: 80rem; }
+        .text-center { text-align: center; }
+        .overflow-x-auto { overflow-x: auto; }
+        .cursor-pointer { cursor: pointer; }
+        .hidden { display: none; }
+        .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .break-all { word-break: break-all; }
+
+        .grid { display: grid; }
+        .grid-cols-12 { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+        .col-span-2 { grid-column: span 2 / span 2; }
+        .col-span-3 { grid-column: span 3 / span 3; }
+        .col-span-6 { grid-column: span 6 / span 6; }
+        .gap-2 { gap: 0.5rem; }
+
+        .space-y-3 > * + * { margin-top: 0.75rem; }
+
+        .p-3 { padding: 0.75rem; }
+        .p-4 { padding: 1rem; }
+        .py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+        .py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+        .py-8 { padding-top: 2rem; padding-bottom: 2rem; }
+        .px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
+        .pt-2 { padding-top: 0.5rem; }
+        .pt-4 { padding-top: 1rem; }
+        .pb-1 { padding-bottom: 0.25rem; }
+        .pb-2 { padding-bottom: 0.5rem; }
+        .pl-2 { padding-left: 0.5rem; }
+        .pl-6 { padding-left: 1.5rem; }
+        .pr-2 { padding-right: 0.5rem; }
+
+        .mb-1 { margin-bottom: 0.25rem; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        .mb-4 { margin-bottom: 1rem; }
+        .mb-6 { margin-bottom: 1.5rem; }
+        .mb-8 { margin-bottom: 2rem; }
+        .mt-4 { margin-top: 1rem; }
+
+        .border { border-width: 1px; border-style: solid; }
+        .border-b { border-bottom-width: 1px; border-bottom-style: solid; }
+        .border-t { border-top-width: 1px; border-top-style: solid; }
+        .border-white { border-color: #ffffff; }
+        .border-gray-600 { border-color: #4b5563; }
+        .border-gray-800 { border-color: #1f2937; }
+        .border-dashed { border-style: dashed; }
+        .border-transparent { border-color: transparent; }
+        .hover\:border-white:hover { border-color: #ffffff; }
+        .last\:border-b-0:last-child { border-bottom-width: 0; }
+
+        .bg-black { background-color: #000000; }
+        .bg-\[\#0a0a0a\] { background-color: #0a0a0a; }
+
+        .text-white { color: #ffffff; }
+        .text-gray-400 { color: #9ca3af; }
+        .text-gray-600 { color: #4b5563; }
+        .text-\[\#2EA043\] { color: #2EA043; }
+        .text-\[\#d73a49\] { color: #d73a49; }
+
+        .text-\[9px\] { font-size: 9px; }
+        .text-\[10px\] { font-size: 10px; }
+        .text-\[11px\] { font-size: 11px; }
+        .text-xs { font-size: 0.75rem; line-height: 1rem; }
+        .text-\[14px\] { font-size: 14px; }
+        .text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
+
+        .tracking-tight { letter-spacing: -0.025em; }
+        .tracking-wider { letter-spacing: 0.05em; }
+        .tracking-widest { letter-spacing: 0.1em; }
+
+        .font-light { font-weight: 300; }
+        .font-medium { font-weight: 500; }
+        .font-semibold { font-weight: 600; }
+        .font-bold { font-weight: 700; }
+        .font-mono { font-family: monospace; }
+
+        .rounded-none { border-radius: 0; }
+        .opacity-50 { opacity: 0.5; }
+        .leading-tight { line-height: 1.25; }
+        .transition-colors { transition: color 0.15s, border-color 0.15s, background-color 0.15s; }
+        .transition-all { transition: all 0.2s; }
+        .duration-200 { transition-duration: 200ms; }
+
+        input#searchInput {
+            width: 100%;
+            background-color: #000000;
+            border: 1px solid #4b5563;
+            color: #9ca3af;
+            padding: 0.75rem;
+            font-size: 0.75rem;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        input#searchInput:focus {
+            outline: none;
+            border-color: #2EA043;
+            color: #ffffff;
+        }
+
+        @media (min-width: 640px) {
+            .sm\:p-5 { padding: 1.25rem; }
+            .sm\:p-8 { padding: 2rem; }
+            .sm\:pl-8 { padding-left: 2rem; }
+            .sm\:text-5xl { font-size: 3rem; line-height: 1; }
+            .sm\:text-xs { font-size: 0.75rem; line-height: 1rem; }
+            .sm\:text-\[15px\] { font-size: 15px; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 sm:p-8">
+
+    <main class="max-w-7xl w-full flex flex-col boot-animate py-8">
+
+        <div class="text-center mb-8">
+            <h1 class="text-3xl sm:text-5xl font-medium tracking-tight mb-2 text-white">MetaScan</h1>
+            <p class="text-[10px] sm:text-xs text-[#2EA043] tracking-widest font-light">AGGREGATE, VERIFY, AND VISUALIZE DIGITAL IDENTITIES</p>
+        </div>
+
+        <!-- SEARCH BAR -->
+        <div class="w-full mb-6" id="searchContainer">
+            <input type="text" id="searchInput" placeholder="> SEARCH IN RESULTS..." class="w-full bg-black border border-gray-600 text-gray-400 p-3 text-xs focus:outline-none focus:border-[#2EA043] focus:text-white transition-colors placeholder-gray-600 tactical-text">
+        </div>
+
+        <!-- BLOCK 1: VALID RESULTS -->
+        <div class="tactical-card p-4 sm:p-5 rounded-none mb-6">
+            <div class="text-[14px] sm:text-[15px] text-[#2EA043] tracking-wider mb-4 font-semibold flex justify-between items-center">
+                <span>TARGET: {{ target | upper }} (VALID RESULTS)</span>
+                <span class="text-white text-xs">TOTAL: {{ valid_results | length }}</span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <div class="min-w-[640px] space-y-3">
+                    <!-- HEADER -->
+                    <div class="grid grid-cols-12 gap-2 border-b border-white pb-2 text-[10px] text-[#2EA043] tracking-widest font-semibold">
+                        <div class="col-span-3">SERVICE</div>
+                        <div class="col-span-3">TOOL</div>
+                        <div class="col-span-6 pl-2">LINK</div>
+                    </div>
+
+                    <!-- RESULT ITEMS -->
+                    {% for item in valid_results %}
+                    <div id="row-{{ loop.index }}" class="result-row border-b border-white pb-2 last:border-b-0">
+                        <div class="grid grid-cols-12 gap-2 items-center">
+                            <!-- SERVICE -->
+                            <div class="col-span-3 font-bold text-white pr-2 truncate tactical-text">
+                                {{ item.service }}
+                            </div>
+                            <div class="col-span-3 text-white pr-2 truncate tactical-text text-[11px]">{{ item.tools_str }}</div>
+                            <div class="col-span-6 flex items-center justify-between gap-2 min-w-0">
+                                <div class="truncate cursor-pointer text-[#2EA043] border border-dashed border-transparent hover:border-white px-2 py-1 transition-all duration-200 tactical-text flex-1 min-w-0" data-url="{{ item.url }}" title="Click to copy URL">
+                                    {{ item.url }}
+                                </div>
+                                {% if item.metadata %}
+                                <button type="button"
+                                        class="meta-toggle"
+                                        data-action="toggle-meta"
+                                        data-target="meta-{{ loop.index }}"
+                                        title="Toggle metadata">▼</button>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {% if item.metadata %}
+                        <div id="meta-{{ loop.index }}" class="hidden w-full pl-6 sm:pl-8 pt-2 pb-1 font-mono text-[11px] leading-tight">
+                            {% for key, val in item.metadata.items() %}
+                            <div class="mb-1"><span class="text-[#2EA043]">{{ key }}</span>: <span class="text-white break-all">{{ val }}</span></div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="result-row py-3">
+                        <p class="text-[#2EA043] tactical-text tracking-widest opacity-50">NO VALID PROFILES CONFIRMED</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- BLOCK 2: FILTERED RESULTS (COLLAPSIBLE) -->
+        <details class="tactical-card p-4 sm:p-5 rounded-none mb-6 group">
+            <summary class="cursor-pointer text-[14px] sm:text-[15px] text-[#2EA043] tracking-wider font-semibold flex justify-between items-center transition-colors">
+                <span>FILTERED RESULTS ({{ filtered_results | length }})</span>
+                <span class="meta-toggle transform group-open:rotate-180">▼</span>
+            </summary>
+
+            <div class="overflow-x-auto mt-4">
+                <div class="min-w-[700px] space-y-3">
+                    <!-- HEADER -->
+                    <div class="grid grid-cols-12 gap-2 border-b border-white pb-2 text-[10px] text-[#2EA043] tracking-widest font-semibold">
+                        <div class="col-span-2">SERVICE</div>
+                        <div class="col-span-2">TOOL</div>
+                        <div class="col-span-2">REASON</div>
+                        <div class="col-span-6 pl-2">LINK</div>
+                    </div>
+
+                    <!-- RESULT ITEMS -->
+                    {% for item in filtered_results %}
+                    <div class="result-row border-b border-white pb-2 last:border-b-0">
+                        <div class="grid grid-cols-12 gap-2 items-center text-white">
+                            <div class="col-span-2 font-bold pr-2 truncate tactical-text">
+                                {{ item.service }}
+                            </div>
+                            <div class="col-span-2 pr-2 text-white truncate tactical-text text-[11px]">{{ item.tools_str }}</div>
+                            <div class="col-span-2 text-[#d73a49] pr-2 truncate tactical-text text-[11px]" style="color: var(--error);">{{ item.reason or 'Filtered' }}</div>
+                            <div class="col-span-6 truncate cursor-pointer text-[#2EA043] border border-dashed border-transparent hover:border-white px-2 py-1 transition-all duration-200 tactical-text" data-url="{{ item.url }}" title="Click to copy URL">
+                                {{ item.url }}
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="result-row py-3">
+                        <p class="text-gray-600 tactical-text tracking-widest">NO FILTERED RESULTS</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </details>
+
+        <!-- BLOCK 3: RAW JSON OUTPUT (COLLAPSIBLE) -->
+        <details class="tactical-card p-4 sm:p-5 rounded-none mb-6 group">
+            <summary class="cursor-pointer text-[14px] sm:text-[15px] text-[#2EA043] tracking-wider font-semibold flex justify-between items-center transition-colors">
+                <span>RAW JSON DATA</span>
+                <span class="meta-toggle transform group-open:rotate-180">▼</span>
+            </summary>
+
+            <div class="mt-4 overflow-x-auto bg-[#0a0a0a] p-4 border border-gray-800">
+<pre class="text-[10px] sm:text-xs text-gray-400 font-mono">{{ raw_json }}</pre>
+            </div>
+        </details>
+
+        <footer class="w-full flex flex-col items-center mt-4 border-t border-white pt-4">
+            <p class="text-[9px] text-white tracking-widest"> METASCAN | MADE BY FONDGARD 2026 </p>
+        </footer>
+
+    </main>
+
+    <script>
+        function copyToClipboard(text, btn) {
+            navigator.clipboard.writeText(text).then(function() {
+                const oldText = btn.innerText;
+                btn.innerText = 'COPIED!';
+                btn.style.color = '#ffffff';
+                btn.style.borderColor = '#ffffff';
+
+                setTimeout(function() {
+                    btn.innerText = oldText;
+                    btn.style.color = '';
+                    btn.style.borderColor = '';
+                }, 800);
+            });
+        }
+
+        // Toggle metadata visibility by element ID
+        function toggleMetadata(elementId, btn) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            if (el.classList.contains('hidden')) {
+                el.classList.remove('hidden');
+                btn.classList.add('expanded');
+                btn.innerText = '▲';
+            } else {
+                el.classList.add('hidden');
+                btn.classList.remove('expanded');
+                btn.innerText = '▼';
+            }
+        }
+
+        // Simple client-side search functionality
+        function filterResults() {
+            let input = document.getElementById('searchInput');
+            if (!input) return;
+            let filter = input.value.toUpperCase();
+            let rows = document.getElementsByClassName('result-row');
+
+            for (let i = 0; i < rows.length; i++) {
+                let text = rows[i].textContent || rows[i].innerText;
+                if (text.toUpperCase().indexOf(filter) > -1) {
+                    rows[i].style.display = "";
+                } else {
+                    rows[i].style.display = "none";
+                }
+            }
+        }
+
+        document.addEventListener('click', function(e) {
+            const copyBtn = e.target.closest('[data-url]');
+            if (copyBtn) {
+                const url = copyBtn.getAttribute('data-url');
+                if (url) {
+                    copyToClipboard(url, copyBtn);
+                }
+            }
+
+            const metaBtn = e.target.closest('[data-action="toggle-meta"]');
+            if (metaBtn) {
+                const targetId = metaBtn.getAttribute('data-target');
+                if (targetId) {
+                    toggleMetadata(targetId, metaBtn);
+                }
+            }
+        });
+
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', filterResults);
+            searchInput.addEventListener('keyup', filterResults);
+        }
+    </script>
+</body>
+</html>

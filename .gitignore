@@ -1,0 +1,44 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Environment files
+.env
+.env.*
+
+# Results directory
+results/
+
+# Pytest / Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+logs/
+*.log
+
+# Local tools / rogue directories
+~*
+sherlock/
+maigret/
+blackbird/
+
+# Generated reports (preserve example.html)
+reports/*.html
+reports/*.json
+!example.html
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
