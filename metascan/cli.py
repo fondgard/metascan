@@ -14,8 +14,10 @@ if sys.platform == "win32":
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         if sys.stderr and hasattr(sys.stderr, "reconfigure"):
             sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-    except Exception:
+    except (AttributeError, OSError, ValueError):
         pass
+
+import re
 
 import typer
 import typer.rich_utils as _rich_utils
@@ -65,7 +67,7 @@ BANNER = r"""    __  __________________   _____ _________    _   __
 
 
 def _print_banner(username: str) -> None:
-    """Print tactical terminal banner with target username.
+    """Print CLI banner with target username.
 
     Args:
         username: Target username being investigated.
@@ -211,6 +213,46 @@ app = typer.Typer(
 )
 
 
+_USERNAME_PATTERN = re.compile(r"^[a-zA-Z0-9_\-.]{1,64}$")
+
+
+def validate_username(username: str) -> str:
+    """Validate and sanitize target username against injection and traversal attacks.
+
+    Args:
+        username: Raw input username from CLI.
+
+    Returns:
+        Cleaned username string.
+
+    Raises:
+        typer.Exit: If username is empty, invalid, or contains dangerous characters.
+    """
+    cleaned = username.strip()
+    if cleaned.startswith("@"):
+        cleaned = cleaned[1:].strip()
+
+    if not cleaned:
+        console.print("[red]Error: Target username cannot be empty.[/red]")
+        raise typer.Exit(code=1)
+
+    if cleaned.startswith("-"):
+        console.print(
+            f"[red]Error: Username '{cleaned}' cannot start with a hyphen "
+            "(flag injection risk).[/red]"
+        )
+        raise typer.Exit(code=1)
+
+    if not _USERNAME_PATTERN.match(cleaned):
+        console.print(
+            f"[red]Error: Invalid target username '{cleaned}'. "
+            "Must be 1-64 characters (alphanumeric, dots, underscores, hyphens).[/red]"
+        )
+        raise typer.Exit(code=1)
+
+    return cleaned
+
+
 @app.command()
 def scan(
     username: str = typer.Argument(..., help="Target username to investigate."),
@@ -243,14 +285,17 @@ def scan(
     ),
 ) -> None:
     """Scan USERNAME across Sherlock, Maigret, and Blackbird."""
-    if output is None:
-        output = Path(f"reports/metascan_{username}.html")
+    clean_username = validate_username(username)
 
-    _print_banner(username)
+    if output is None:
+        safe_name = re.sub(r"[^a-zA-Z0-9_.-]", "_", clean_username)
+        output = Path("reports") / f"metascan_{safe_name}.html"
+
+    _print_banner(clean_username)
 
     asyncio.run(
         _run_pipeline(
-            username=username,
+            username=clean_username,
             output=output,
             timeout=timeout,
             concurrency=concurrency,

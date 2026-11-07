@@ -193,7 +193,9 @@ class BlackbirdRunner(BaseRunner):
                 for meta_key in ("metadata", "extra", "data", "ids"):
                     candidate = item.get(meta_key)
                     if isinstance(candidate, dict):
-                        meta.update({k: v for k, v in candidate.items() if v not in (None, "", [], {})})
+                        meta.update(
+                            {k: v for k, v in candidate.items() if v not in (None, "", [], {})}
+                        )
                         break
 
                 known_meta_fields = (
@@ -202,8 +204,9 @@ class BlackbirdRunner(BaseRunner):
                     "uid", "username", "is_verified", "location",
                 )
                 for field in known_meta_fields:
-                    if field in item and field not in meta and item[field] not in (None, "", [], {}):
-                        meta[field] = item[field]
+                    val = item.get(field)
+                    if field in item and field not in meta and val not in (None, "", [], {}):
+                        meta[field] = val
                 hits.append((service, url, meta))
         return hits
 

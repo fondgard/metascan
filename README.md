@@ -6,12 +6,16 @@
   <br />
   <h1>MetaScan</h1>
   <p>
-    <strong>High-Performance Asynchronous OSINT Identity Aggregation and Verification Engine</strong>
+    <strong>Asynchronous OSINT Username Reconnaissance and Verification Tool</strong>
   </p>
   <p>
     <a href="https://github.com/fondgard/metascan/actions"><img src="https://img.shields.io/badge/build-passing-brightgreen.svg" alt="Build Status"></a>
     <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python Version"></a>
+    <a href="SECURITY.md"><img src="https://img.shields.io/badge/security-policy-blue.svg" alt="Security Policy"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT"></a>
+  </p>
+  <p>
+    <em>CI/CD: SAST scanning with Bandit, dependency audits, Flake8 linting, and pytest suite.</em>
   </p>
 </div>
 
@@ -22,7 +26,7 @@
       <a href="#about-the-project">About The Project</a>
       <ul>
         <li><a href="#core-capabilities">Core Capabilities</a></li>
-        <li><a href="#validation-and-false-positive-reduction">Validation and False-Positive Reduction</a></li>
+        <li><a href="#validation-pipeline">Validation Pipeline</a></li>
         <li><a href="#system-architecture">System Architecture</a></li>
       </ul>
     </li>
@@ -42,33 +46,34 @@
         <li><a href="#reporting-and-artifacts">Reporting and Artifacts</a></li>
       </ul>
     </li>
+    <li><a href="#data-privacy">Data Privacy</a></li>
+    <li><a href="#continuous-integration--security-audits">CI/CD & Security Audits</a></li>
+    <li><a href="#security-policy">Security Policy</a></li>
     <li><a href="#disclaimer">Disclaimer</a></li>
   </ol>
 </details>
 
 ## About The Project
 
-MetaScan is an asynchronous Open Source Intelligence (OSINT) framework engineered to resolve digital identities across disparate online services while mitigating the high false-positive rates inherent to username enumeration tools.
+MetaScan is an asynchronous OSINT command-line tool for username reconnaissance across multiple online services. It aggregates findings from **Sherlock**, **Maigret**, and **Blackbird**, removes duplicates, and filters false positives through a multi-stage HTTP/2 validation pipeline.
 
-Traditional reconnaissance scanners typically operate as isolated utilities with divergent pattern heuristics, non-standardized output structures, and minimal post-discovery validation. This frequently results in analytical overhead due to deceptive HTTP status codes (such as soft-404 pages returning HTTP 200 OK), unhandled redirect chains to login portals, and bot-mitigation defenses.
-
-MetaScan addresses these challenges through a unified orchestration layer that aggregates the reconnaissance engines of **Sherlock**, **Maigret**, and **Blackbird**. Discovered candidate profiles are consolidated into a centralized registry, normalized, and subjected to a multi-tiered asynchronous HTTP/2 validation pipeline before report compilation.
+Standard username enumeration scanners often produce false positives due to soft-404 pages (HTTP 200 with "user not found" body text), unhandled redirects to login walls, or anti-bot challenge pages. MetaScan validates candidate profile endpoints before writing reports.
 
 ### Core Capabilities
 
-- **Multi-Engine Concurrent Orchestration**: Executes Sherlock, Maigret, and Blackbird as asynchronous subprocesses within a non-blocking event loop, consolidating coverage across thousands of platform signatures.
-- **URI Normalization and Deduplication**: Ingests disparate URL structures, standardizes protocol schemes and subdomain variations, and merges discovery provenance to prevent redundant network traffic.
-- **Asynchronous High-Throughput Validation**: Validates discovered endpoints concurrently using `httpx` with HTTP/2 support, controlled by configurable concurrency semaphores to prevent localized network saturation.
-- **Interactive Offline Reporting**: Generates standalone, zero-dependency HTML dashboards with client-side search filtering, validated vs. filtered categorizations, and embedded raw JSON data representations for integration into threat intelligence pipelines.
+- **Concurrent Multi-Engine Orchestration**: Executes Sherlock, Maigret, and Blackbird in parallel as non-blocking asynchronous subprocesses.
+- **URL Normalization and Deduplication**: Canonicalizes scheme, host casing, default ports, trailing slashes, and platform-specific aliases to merge duplicate results across tools.
+- **Asynchronous HTTP/2 Validation**: Verifies discovered profile URLs using `httpx` with HTTP/2 support, throttled by asyncio semaphores.
+- **Standalone HTML & JSON Reports**: Generates an offline HTML dashboard with client-side search filtering, separated valid and filtered result tables, and embedded raw JSON data.
 
-### Validation and False-Positive Reduction
+### Validation Pipeline
 
-MetaScan implements a multi-tier validation architecture designed to systematically eliminate invalid profiles:
+MetaScan evaluates candidate endpoints through four sequential checks:
 
-1. **HTTP Status Code Verification**: Enforces rigorous status checking. Endpoints returning standard negative codes (`404 Not Found`, `410 Gone`, `451 Unavailable`) or server faults (`5xx`) are filtered immediately.
-2. **Redirect Destination Traps**: Follows redirect chains and inspects terminal paths. Responses redirected to generic domain roots (`/`, `/home`, `/index.html`), authentication barriers (`/login`, `/signin`, `/authwall`), or generic error locations (`/404`, `/error`, `/lander`) are marked as invalid.
-3. **Soft-404 and Stop-Word Heuristics**: Analyzes the parsed DOM (`<title>` elements and normalized body content) against a multilingual corpus of profile-absence signatures (e.g., *"User not found"*, *"Page doesn't exist"*, *"Account suspended"*, *"Profile unavailable"*).
-4. **Platform-Specific DOM Probes**: Employs specialized inspection logic for platforms with complex client-side rendering or non-standard status returns, including Twitter/X, Instagram, TikTok, Reddit, Telegram, YouTube, Twitch, Pinterest, and Spotify.
+1. **HTTP Status Code Verification**: Rejects standard negative codes (`404 Not Found`, `410 Gone`, `451 Unavailable`) and server errors (`5xx`). Flags WAF challenges (`401`, `403`, `429`).
+2. **Redirect Inspection**: Traces redirect chains. Requests redirected to domain roots (`/`, `/home`), authentication gates (`/login`, `/signin`, `/authwall`), or generic landing/error pages (`/404`, `/error`, `/lander`) are marked as invalid.
+3. **Soft-404 Detection**: Scans DOM `<title>` tags and body content for account-absence signatures in English and Russian.
+4. **Platform-Specific Heuristics**: Custom validation logic for platforms with SPA rendering or non-standard status responses (Twitter/X, Instagram, TikTok, Reddit, Telegram, YouTube, Twitch, Pinterest, Spotify).
 
 ### System Architecture
 
@@ -153,7 +158,7 @@ Target Username
    ```
 
 4. **Install external scanner dependencies**:
-   MetaScan relies on external utilities (including Blackbird, which is managed outside standard PyPI packages). Execute the dedicated automated provisioning script for your operating system:
+   MetaScan uses external tools (including Blackbird, managed outside standard PyPI packages). Run the provisioning script for your operating system:
    - **Linux / macOS**:
      ```bash
      chmod +x install_dependencies.sh
@@ -164,7 +169,7 @@ Target Username
      .\install_dependencies.ps1
      ```
 
-   *The script provisions required scanner repositories into a dedicated user directory (`~/.local/share/metascan` or `%LOCALAPPDATA%\metascan`), installs their respective runtime requirements, and establishes necessary execution wrappers without modifying the working directory tree.*
+   The script clones external repositories into `~/.local/share/metascan` (or `%LOCALAPPDATA%\metascan`), checks out pinned commits with SHA-256 verification, installs Python requirements, and sets up CLI wrappers.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -172,7 +177,7 @@ Target Username
 
 ### Basic Execution
 
-Initiate an automated scan against a target username across all configured engines. By default, MetaScan compiles results into `reports/metascan_<username>.html` and launches the artifact in the default web browser upon completion:
+Scan a target username across all configured engines. By default, MetaScan saves results to `reports/metascan_<username>.html` and opens the report in the system browser:
 
 ```bash
 mns target_username
@@ -180,7 +185,7 @@ mns target_username
 
 ### Advanced Workflows
 
-Specify custom output destinations, tune network concurrency, set runner subprocess timeouts, or disable automated browser launching:
+Specify custom output paths, concurrency limits, runner timeouts, or disable browser launching:
 
 ```bash
 mns target_username -o reports/audit_target.html -c 40 -t 90 --no-open
@@ -191,21 +196,21 @@ mns target_username -o reports/audit_target.html -c 40 -t 90 --no-open
 | Argument / Option | Short | Default Value | Description |
 |---|---|---|---|
 | `USERNAME` | — | *(Required)* | Target username to investigate across platforms. |
-| `--output` | `-o` | `reports/metascan_<user>.html` | Output file path for the generated standalone HTML report. |
+| `--output` | `-o` | `reports/metascan_<user>.html` | Output file path for the generated HTML report. |
 | `--concurrency` | `-c` | `20` | Maximum number of concurrent asynchronous HTTP validation requests. |
-| `--timeout` | `-t` | `120` | Maximum execution timeout (in seconds) allocated to each external scanner. |
-| `--no-open` | — | `False` | Prevents automated opening of the generated report in the system browser. |
+| `--timeout` | `-t` | `120` | Subprocess timeout (in seconds) for each external scanner. |
+| `--no-open` | — | `False` | Disables opening the report in the browser automatically. |
 | `--version` | `-v` | — | Displays the installed MetaScan version and exits. |
 | `--help` | — | — | Displays command-line help instructions and available options. |
 
 ### Reporting and Artifacts
 
-Upon completion of the analysis and validation lifecycle, MetaScan produces an autonomous HTML report containing:
+Upon completion, MetaScan produces an offline HTML report containing:
 
-- **Identity Overview**: Quantitative summary of verified profiles, discarded false positives, and scanner execution metrics.
-- **Interactive Verification Grid**: Client-side filtering mechanism to inspect confirmed endpoints, corresponding services, and detection engines.
-- **Filtered Artifacts Log**: Complete diagnostic transparency documenting rejected URLs alongside explicit reasons (e.g., `404 Not Found`, `Soft-404 (User Not Found)`, `Redirect to Login/404`, `Timeout`).
-- **Raw JSON Data Block**: Formatted, machine-readable dataset embedded directly within the document for automated extraction into SIEM or external analysis tooling:
+- **Summary Header**: Target username and count of confirmed profiles.
+- **Valid Results**: Table of verified profiles with service name, detecting tools, and copyable URLs.
+- **Filtered Results**: Diagnostic log documenting rejected URLs alongside explicit failure reasons (`404 Not Found`, `Soft-404 (User Not Found)`, `Redirect to Login/404`, `Timeout`).
+- **Raw JSON Data Block**: Formatted JSON dataset embedded directly within the report:
 
 ```json
 {
@@ -226,6 +231,31 @@ Upon completion of the analysis and validation lifecycle, MetaScan produces an a
   }
 }
 ```
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Data Privacy
+
+- **Zero-Telemetry**: All operations run locally. No target queries, usernames, or telemetry metrics are sent to remote servers.
+- **Local Storage**: Generated HTML reports and JSON datasets are saved exclusively to the local filesystem (`reports/`).
+- **Direct Requests**: Reconnaissance and validation requests are sent directly to target services without intermediate logging or telemetry.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Continuous Integration & Security Audits
+
+Code contributions and releases are validated via GitHub Actions (`.github/workflows/security-audit.yml`):
+
+- **SAST Auditing**: Static application security testing via **Bandit** (`bandit -r metascan`).
+- **PEP-8 Linting**: Code style and syntax checking via **Flake8** (`flake8 metascan tests`).
+- **Regression Testing**: Automated test suite execution via **pytest** and **pytest-asyncio** across Python 3.11, 3.12, and 3.13.
+- **Supply Chain Integrity**: External dependencies pinned to audited Git commit hashes with SHA-256 integrity verification.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Security Policy
+
+Security issues should be reported responsibly and privately. Please refer to [SECURITY.md](SECURITY.md) for reporting procedures and contact details (`[m.konyaev@proton.me]`). Do not disclose vulnerabilities in public GitHub Issues.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

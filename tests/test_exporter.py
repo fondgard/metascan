@@ -91,7 +91,11 @@ class TestHtmlStructure:
 
     def test_css_variables_preserved(self, rendered_html: str) -> None:
         """All custom CSS variables must be present in the template."""
-        for var in ("--bg-dark", "--card-bg", "--card-border", "--text-color", "--accent", "--error"):
+        vars_to_check = (
+            "--bg-dark", "--card-bg", "--card-border",
+            "--text-color", "--accent", "--error",
+        )
+        for var in vars_to_check:
             assert var in rendered_html, f"CSS variable {var!r} is missing"
 
     def test_boot_animate_class_present(self, rendered_html: str) -> None:

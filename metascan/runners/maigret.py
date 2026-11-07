@@ -165,9 +165,10 @@ class MaigretRunner(BaseRunner):
                 cmd, registry, username, timeout, self._line_cb
             )
 
+            safe_name = re.sub(r"[^a-zA-Z0-9_.-]", "_", username)
             report_candidates = [
-                Path(tmp_dir) / f"report_{username}_simple.json",
-                Path(tmp_dir) / f"{username}.json",
+                Path(tmp_dir) / f"report_{safe_name}_simple.json",
+                Path(tmp_dir) / f"{safe_name}.json",
             ]
             report_candidates += list(Path(tmp_dir).glob("*.json"))
 

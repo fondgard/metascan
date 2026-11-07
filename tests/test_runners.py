@@ -7,7 +7,6 @@ parsers are invoked directly, and external runners are mocked.
 from __future__ import annotations
 
 import json
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -89,7 +88,10 @@ class TestSherlockStdoutParser:
     @pytest.mark.asyncio
     async def test_sherlock_ansi_escapes_handled(self) -> None:
         reg = _registry()
-        line = "\x1b[1;32;40m[+] \x1b[0m\x1b[1;37;40mGithub\x1b[0m: \x1b[1;32;40mhttps://github.com/testuser\x1b[0m"
+        line = (
+            "\x1b[1;32;40m[+] \x1b[0m\x1b[1;37;40mGithub\x1b[0m: "
+            "\x1b[1;32;40mhttps://github.com/testuser\x1b[0m"
+        )
         await SherlockRunner._line_cb(line, reg, "testuser")
         entries = reg.all_entries()
         assert len(entries) == 1
@@ -163,7 +165,10 @@ class TestMaigretJsonParser:
             "sites": {
                 "Github": {"status": "found", "url_user": "https://github.com/testuser"},
                 "Reddit": {"status": "found", "url_user": "https://reddit.com/user/testuser"},
-                "Steam":  {"status": "not found", "url_user": "https://steamcommunity.com/id/testuser"},
+                "Steam": {
+                    "status": "not found",
+                    "url_user": "https://steamcommunity.com/id/testuser",
+                },
             }
         }
         hits = MaigretRunner._parse_json(self._write(tmp_path, data))
@@ -189,7 +194,11 @@ class TestMaigretJsonParser:
         """Format C: list of entries."""
         data = [
             {"sitename": "Keybase", "url_user": "https://keybase.io/testuser", "status": "found"},
-            {"sitename": "Missing", "url_user": "https://example.com/testuser", "status": "not found"},
+            {
+                "sitename": "Missing",
+                "url_user": "https://example.com/testuser",
+                "status": "not found",
+            },
         ]
         hits = MaigretRunner._parse_json(self._write(tmp_path, data))
         assert len(hits) == 1
@@ -282,7 +291,11 @@ class TestBlackbirdJsonParser:
             "username": "testuser",
             "accounts": [
                 {"name": "Github", "url": "https://github.com/testuser", "status": "found"},
-                {"name": "Steam",  "url": "https://steamcommunity.com/id/testuser", "status": "not found"},
+                {
+                    "name": "Steam",
+                    "url": "https://steamcommunity.com/id/testuser",
+                    "status": "not found",
+                },
             ]
         }
         hits = BlackbirdRunner._parse_json(self._write(tmp_path, data))
@@ -373,24 +386,31 @@ class TestGracefulDegradation:
 
         monkeypatch.setattr(orch, "_run_native_probes", _noop_probes)
 
-        # Runner 1 is unavailable, Runner 2 is available but raises an error, Runner 3 works normally
+        # Runner 1 is unavailable, Runner 2 fails with error, Runner 3 works normally
         class MockFailingRunner(SherlockRunner):
             name = "FailingRunner"
+
             def is_available(self) -> bool:
                 return True
+
             async def run(self, username, registry, timeout=120) -> int:
                 raise RuntimeError("External tool crashed!")
 
         class MockWorkingRunner(MaigretRunner):
             name = "WorkingRunner"
+
             def is_available(self) -> bool:
                 return True
+
             async def run(self, username, registry, timeout=120) -> int:
-                await registry.add_result("WorkingService", f"https://example.com/{username}", self.name)
+                await registry.add_result(
+                    "WorkingService", f"https://example.com/{username}", self.name
+                )
                 return 1
 
         class MockMissingRunner(BlackbirdRunner):
             name = "MissingRunner"
+
             def is_available(self) -> bool:
                 return False
 

@@ -14,7 +14,6 @@ def test_demo_option_removed() -> None:
     assert result.exit_code == 0
     assert "--demo" not in result.output
 
-    # Invoking with --demo should fail
     fail_result = runner.invoke(cli.app, ["user", "--demo"])
     assert fail_result.exit_code != 0
     assert "No such option: --demo" in fail_result.output or "Error" in fail_result.output
@@ -39,8 +38,33 @@ def test_help_palette_colors_only_green_red_white() -> None:
     # Verify no cyan (36), yellow (33), magenta (35), blue (34) in ANSI escapes
     ansi_escapes = set(re.findall(r"\x1b\[[0-9;]*m", result.stdout))
     for code in ansi_escapes:
-        # Check that there are no cyan (36), magenta (35), yellow (33), blue (34) codes
         assert "36" not in code, f"Unexpected cyan ANSI code: {code}"
         assert "35" not in code, f"Unexpected magenta ANSI code: {code}"
         assert "33" not in code, f"Unexpected yellow ANSI code: {code}"
         assert "34" not in code, f"Unexpected blue ANSI code: {code}"
+
+
+def test_validate_username_valid() -> None:
+    assert cli.validate_username("testuser") == "testuser"
+    assert cli.validate_username("alex.dev_99-x") == "alex.dev_99-x"
+    assert cli.validate_username("@target_handle") == "target_handle"
+
+
+def test_validate_username_invalid() -> None:
+    import typer
+    import pytest
+
+    invalid_targets = [
+        "",
+        "   ",
+        "-user",
+        "--flag",
+        "../../etc/passwd",
+        r"..\..\windows\system32",
+        "user/name",
+        "user;id",
+        "a" * 65,
+    ]
+    for target in invalid_targets:
+        with pytest.raises(typer.Exit):
+            cli.validate_username(target)

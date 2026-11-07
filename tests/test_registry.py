@@ -166,7 +166,10 @@ class TestProfileEntry:
             tools=["Sherlock"],
             metadata={"karma": 50, "fullname": "Nick"},
         )
-        entry.update(tools=["Blackbird", "Sherlock"], metadata={"bio": "Bio text", "fullname": "Other"})
+        entry.update(
+            tools=["Blackbird", "Sherlock"],
+            metadata={"bio": "Bio text", "fullname": "Other"},
+        )
         assert entry.tools == ["Sherlock", "Blackbird"]
         assert entry.metadata["karma"] == 50
         assert entry.metadata["fullname"] == "Nick"

@@ -78,7 +78,10 @@ _BAD_REDIRECT_SUFFIXES: tuple[str, ...] = (
 
 # SOCS cookie bypasses Google/YouTube GDPR consent screens
 _DEFAULT_COOKIES: dict[str, str] = {
-    "SOCS": "CAISNQgDEitib3FfaWRlbnRpdHlmcm9udGVuZHVpc2VydmVyXzIwMjMwODI5LjA3X3AwGgJlbiACGgYIgPjcpwY",
+    "SOCS": (
+        "CAISNQgDEitib3FfaWRlbnRpdHlmcm9udGVuZHVpc2VydmVyXzIwMjMwODI5"
+        "LjA3X3AwGgJlbiACGgYIgPjcpwY"
+    ),
 }
 
 
@@ -108,13 +111,24 @@ class AsyncValidator:
         self._transport = _transport
 
     def _make_client(self) -> httpx.AsyncClient:
-        """Create configured AsyncClient instance."""
+        """Create configured AsyncClient instance with connection limits and HTTP/2."""
+        http2_enabled = True
+        try:
+            import h2  # noqa: F401
+        except ImportError:
+            http2_enabled = False
+
         return httpx.AsyncClient(
             follow_redirects=True,
-            timeout=self.timeout,
+            timeout=httpx.Timeout(self.timeout, connect=min(5.0, self.timeout)),
+            limits=httpx.Limits(
+                max_connections=max(100, self.concurrency * 2),
+                max_keepalive_connections=self.concurrency,
+                keepalive_expiry=10.0,
+            ),
             headers=_BROWSER_HEADERS,
             cookies=_DEFAULT_COOKIES,
-            http2=True,
+            http2=http2_enabled,
             transport=self._transport,
         )
 
@@ -148,7 +162,9 @@ class AsyncValidator:
         # Service-specific probe: Instagram
         if "instagram.com" in url_lower:
             insta_headers = {
-                "User-Agent": "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+                "User-Agent": (
+                    "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)"
+                ),
                 "Accept": "*/*",
                 "Accept-Language": "en-US,en;q=0.9",
             }
@@ -168,7 +184,11 @@ class AsyncValidator:
                 og_title = soup.find("meta", property="og:title")
                 title_content = (og_title.get("content", "") if og_title else "").lower()
                 target_lower = target_username.lower()
-                if f"(@{target_lower})" in title_content or f"@{target_lower}" in title_content or target_lower in title_content:
+                if (
+                    f"(@{target_lower})" in title_content
+                    or f"@{target_lower}" in title_content
+                    or target_lower in title_content
+                ):
                     entry.status = ValidationStatus.FOUND
                     entry.reason = None
                     return
@@ -215,7 +235,11 @@ class AsyncValidator:
                     entry.status = ValidationStatus.ERROR
                     entry.reason = "Soft-404 (User Not Found)"
                     return
-                if f"@{target_username.lower()}" in title_text or "/ x" in title_text or "twitter" in title_text:
+                if (
+                    f"@{target_username.lower()}" in title_text
+                    or "/ x" in title_text
+                    or "twitter" in title_text
+                ):
                     entry.status = ValidationStatus.FOUND
                     entry.reason = None
                     return
@@ -324,7 +348,7 @@ class AsyncValidator:
                         entry.status = ValidationStatus.ERROR
                         entry.reason = "Soft-404 (User Not Found)"
                         return
-                    except Exception:
+                    except (json.JSONDecodeError, AttributeError, TypeError, KeyError):
                         pass
                 body_text = soup.get_text(separator=" ", strip=True).lower()[:15_000]
                 if "could not find this account" in body_text:
@@ -414,7 +438,11 @@ class AsyncValidator:
                 soup = BeautifulSoup(response.text, "html.parser")
                 title_text = (soup.title.string or "").strip().lower() if soup.title else ""
                 target_lower = target_username.lower()
-                if title_text and title_text != "twitch" and (target_lower in title_text or "- twitch" in title_text):
+                if (
+                    title_text
+                    and title_text != "twitch"
+                    and (target_lower in title_text or "- twitch" in title_text)
+                ):
                     entry.status = ValidationStatus.FOUND
                     entry.reason = None
                     return

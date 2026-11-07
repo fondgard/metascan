@@ -134,7 +134,8 @@ class SherlockRunner(BaseRunner):
             return 0
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            json_path = Path(tmp_dir) / f"{username}.json"
+            safe_name = re.sub(r"[^a-zA-Z0-9_.-]", "_", username)
+            json_path = Path(tmp_dir) / f"{safe_name}.json"
             cmd = self._resolve_cmd(username, tmp_dir=tmp_dir, json_path=str(json_path))
 
             await self._run_subprocess(

@@ -1,4 +1,4 @@
-"""HtmlExporter — renders Jinja2 template into polished MetaScan HTML reports."""
+"""HtmlExporter — renders Jinja2 template into MetaScan HTML reports."""
 
 from __future__ import annotations
 

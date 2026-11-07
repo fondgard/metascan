@@ -18,6 +18,7 @@ from metascan.runners.sherlock import SherlockRunner
 
 console = Console(highlight=False)
 
+
 class Orchestrator:
     """Coordinates concurrent execution of OSINT runners and fallback native probes.
 
@@ -63,7 +64,8 @@ class Orchestrator:
         for runner in self._runners:
             if not runner.is_available():
                 console.print(
-                    f"[yellow]⚠️  {runner.name} not found in system (PATH / venv), skipping...[/yellow]"
+                    f"[yellow]⚠️  {runner.name} not found in system (PATH / venv), "
+                    "skipping...[/yellow]"
                 )
 
         runners = self.available_runners()
@@ -92,8 +94,8 @@ class Orchestrator:
     async def _run_native_probes(self, username: str, registry: ResultRegistry) -> None:
         """Execute direct HTTP checks for high-value targets (Instagram, Twitter, etc.).
 
-        Guarantees discovery on platforms where legacy runners often fail due to
-        outdated scrapers, dead mirrors, or strict anti-bot systems.
+        Fallback checks for platforms where external runners frequently fail
+        due to outdated scrapers, schema changes, or anti-bot defenses.
 
         Args:
             username: Target username.
@@ -108,12 +110,18 @@ class Orchestrator:
             "Accept-Language": "en-US,en;q=0.9",
         }
         crawler_headers = {
-            "User-Agent": "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+            "User-Agent": (
+                "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)"
+            ),
             "Accept": "*/*",
             "Accept-Language": "en-US,en;q=0.9",
         }
 
-        async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
+        async with httpx.AsyncClient(
+            follow_redirects=True,
+            timeout=httpx.Timeout(10.0, connect=5.0),
+            limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+        ) as client:
             async def _check_instagram() -> None:
                 try:
                     url = f"https://www.instagram.com/{username}/"
@@ -123,9 +131,13 @@ class Orchestrator:
                         og_title = soup.find("meta", property="og:title")
                         content = (og_title.get("content", "") if og_title else "").lower()
                         u_lower = username.lower()
-                        if f"(@{u_lower})" in content or f"@{u_lower}" in content or u_lower in content:
+                        if (
+                            f"(@{u_lower})" in content
+                            or f"@{u_lower}" in content
+                            or u_lower in content
+                        ):
                             await registry.add_result("Instagram", url, "MetaScan")
-                except Exception:
+                except (httpx.RequestError, httpx.TimeoutException, KeyError, AttributeError):
                     pass
 
             async def _check_twitter() -> None:
@@ -146,7 +158,7 @@ class Orchestrator:
                             "/ x" in title or f"@{username.lower()}" in title
                         ):
                             await registry.add_result("Twitter", url, "MetaScan")
-                except Exception:
+                except (httpx.RequestError, httpx.TimeoutException, KeyError, AttributeError):
                     pass
 
             async def _check_telegram() -> None:
@@ -159,7 +171,7 @@ class Orchestrator:
                         title = soup.find(class_="tgme_page_title")
                         if extra or title:
                             await registry.add_result("Telegram", url, "MetaScan")
-                except Exception:
+                except (httpx.RequestError, httpx.TimeoutException, KeyError, AttributeError):
                     pass
 
             async def _check_github() -> None:
@@ -168,18 +180,20 @@ class Orchestrator:
                     r = await client.get(url, headers=browser_headers)
                     if r.status_code == 200 and "not found" not in r.text[:2000].lower():
                         await registry.add_result("Github", url, "MetaScan")
-                except Exception:
+                except (httpx.RequestError, httpx.TimeoutException, KeyError, AttributeError):
                     pass
 
             async def _check_youtube() -> None:
                 try:
                     url = f"https://www.youtube.com/@{username}"
+                    socs_cookie = (
+                        "CAISNQgDEitib3FfaWRlbnRpdHlmcm9udGVuZHVpc2VydmVyXzIwMjMwODI5"
+                        "LjA3X3AwGgJlbiACGgYIgPjcpwY"
+                    )
                     r = await client.get(
                         url,
                         headers=browser_headers,
-                        cookies={
-                            "SOCS": "CAISNQgDEitib3FfaWRlbnRpdHlmcm9udGVuZHVpc2VydmVyXzIwMjMwODI5LjA3X3AwGgJlbiACGgYIgPjcpwY",
-                        },
+                        cookies={"SOCS": socs_cookie},
                     )
                     if r.status_code == 200:
                         soup = BeautifulSoup(r.text, "html.parser")
@@ -192,7 +206,7 @@ class Orchestrator:
                             and "this page isn't available" not in body
                         ):
                             await registry.add_result("YouTube", url, "MetaScan")
-                except Exception:
+                except (httpx.RequestError, httpx.TimeoutException, KeyError, AttributeError):
                     pass
 
             async def _check_tiktok() -> None:
@@ -207,7 +221,13 @@ class Orchestrator:
                             ud = d.get("__DEFAULT_SCOPE__", {}).get("webapp.user-detail", {})
                             if ud.get("statusCode") == 0 and "userInfo" in ud:
                                 await registry.add_result("TikTok", url, "MetaScan")
-                except Exception:
+                except (
+                    httpx.RequestError,
+                    httpx.TimeoutException,
+                    json.JSONDecodeError,
+                    KeyError,
+                    AttributeError,
+                ):
                     pass
 
             async def _check_twitch() -> None:
@@ -220,7 +240,7 @@ class Orchestrator:
                         u_lower = username.lower()
                         if t and t != "twitch" and (u_lower in t or "- twitch" in t):
                             await registry.add_result("Twitch", url, "MetaScan")
-                except Exception:
+                except (httpx.RequestError, httpx.TimeoutException, KeyError, AttributeError):
                     pass
 
             async def _check_pinterest() -> None:
@@ -234,7 +254,7 @@ class Orchestrator:
                         u_lower = username.lower()
                         if og or (t and t != "pinterest" and u_lower in t):
                             await registry.add_result("Pinterest", url, "MetaScan")
-                except Exception:
+                except (httpx.RequestError, httpx.TimeoutException, KeyError, AttributeError):
                     pass
 
             async def _check_spotify() -> None:
@@ -243,7 +263,7 @@ class Orchestrator:
                     r = await client.get(url, headers={"User-Agent": "Twitterbot/1.0"})
                     if r.status_code == 200:
                         await registry.add_result("Spotify", url, "MetaScan")
-                except Exception:
+                except (httpx.RequestError, httpx.TimeoutException, KeyError, AttributeError):
                     pass
 
             tasks = [

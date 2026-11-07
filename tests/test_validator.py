@@ -476,7 +476,10 @@ class TestSpecializedPlatformValidation:
 
     @pytest.mark.asyncio
     async def test_instagram_valid_with_og_title(self) -> None:
-        html = '<html><head><meta property="og:title" content="John Doe (@alex) • Instagram photos"></head></html>'
+        html = (
+            '<html><head><meta property="og:title" '
+            'content="John Doe (@alex) • Instagram photos"></head></html>'
+        )
         transport = RoutedMockTransport([
             ("instagram.com/alex", 200, html, {}),
         ])
@@ -553,7 +556,10 @@ class TestSpecializedPlatformValidation:
 
     @pytest.mark.asyncio
     async def test_youtube_valid(self) -> None:
-        html = "<html><head><title>Alex Channel - YouTube</title></head><body>Welcome to my channel</body></html>"
+        html = (
+            "<html><head><title>Alex Channel - YouTube</title></head>"
+            "<body>Welcome to my channel</body></html>"
+        )
         transport = RoutedMockTransport([
             ("youtube.com/@alex", 200, html, {}),
         ])
@@ -566,7 +572,10 @@ class TestSpecializedPlatformValidation:
 
     @pytest.mark.asyncio
     async def test_youtube_invalid_russian_soft404(self) -> None:
-        html = "<html><head><title>YouTube</title></head><body>Эта страница недоступна. Может, поискать что-нибудь другое?</body></html>"
+        html = (
+            "<html><head><title>YouTube</title></head>"
+            "<body>Эта страница недоступна. Может, поискать что-нибудь другое?</body></html>"
+        )
         transport = RoutedMockTransport([
             ("youtube.com/@fakeuser", 200, html, {}),
         ])
@@ -600,7 +609,8 @@ class TestSpecializedPlatformValidation:
             }
         }
         import json as _json
-        html = f'<html><script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">{_json.dumps(data)}</script></html>'
+        json_str = _json.dumps(data)
+        html = f'<html><script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">{json_str}</script></html>'
         transport = RoutedMockTransport([
             ("tiktok.com/@alex", 200, html, {}),
         ])
@@ -622,7 +632,8 @@ class TestSpecializedPlatformValidation:
             }
         }
         import json as _json
-        html = f'<html><script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">{_json.dumps(data)}</script></html>'
+        json_str = _json.dumps(data)
+        html = f'<html><script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">{json_str}</script></html>'
         transport = RoutedMockTransport([
             ("tiktok.com/@fakeuser", 200, html, {}),
         ])
@@ -687,7 +698,10 @@ class TestSpecializedPlatformValidation:
 
     @pytest.mark.asyncio
     async def test_pinterest_valid(self) -> None:
-        html = '<html><head><meta property="og:title" content="Alex (alex) - Profile | Pinterest"></head></html>'
+        html = (
+            '<html><head><meta property="og:title" '
+            'content="Alex (alex) - Profile | Pinterest"></head></html>'
+        )
         transport = RoutedMockTransport([
             ("pinterest.com/alex", 200, html, {}),
         ])
@@ -748,7 +762,8 @@ class TestSpecializedPlatformValidation:
     @pytest.mark.asyncio
     async def test_wikipedia_centralauth_rejected(self) -> None:
         v = AsyncValidator()
-        entry = _make_entry("Wikipedia", "https://en.wikipedia.org/wiki/Special:CentralAuth/ponchegg?uselang=qqx")
+        target_url = "https://en.wikipedia.org/wiki/Special:CentralAuth/ponchegg?uselang=qqx"
+        entry = _make_entry("Wikipedia", target_url)
         await v.validate_entry(entry, "ponchegg")
 
         assert entry.status == ValidationStatus.ERROR
@@ -756,7 +771,10 @@ class TestSpecializedPlatformValidation:
 
     @pytest.mark.asyncio
     async def test_twitter_x_suspended(self) -> None:
-        html = "<html><head><title>Account suspended / X</title></head><body>This account has been suspended.</body></html>"
+        html = (
+            "<html><head><title>Account suspended / X</title></head>"
+            "<body>This account has been suspended.</body></html>"
+        )
         transport = RoutedMockTransport([
             ("x.com/suspended_user", 200, html, {}),
         ])
@@ -766,7 +784,3 @@ class TestSpecializedPlatformValidation:
 
         assert entry.status == ValidationStatus.ERROR
         assert entry.reason == "Account suspended"
-
-
-
-

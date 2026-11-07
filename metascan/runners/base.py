@@ -115,11 +115,12 @@ class BaseRunner(ABC):
         stdout_buf: list[bytes] = []
 
         async def _line_reader() -> None:
-            assert proc.stdout is not None
+            if proc.stdout is None:
+                return
             while True:
                 try:
                     raw = await proc.stdout.readline()
-                except Exception:
+                except (OSError, ValueError):
                     break
                 if not raw:
                     break
@@ -133,6 +134,15 @@ class BaseRunner(ABC):
             await asyncio.wait_for(proc.wait(), timeout=float(timeout))
         except asyncio.TimeoutError:
             await _terminate_gracefully(proc)
+        except asyncio.CancelledError:
+            await _terminate_gracefully(proc)
+            raise
+        finally:
+            if proc.returncode is None:
+                try:
+                    proc.kill()
+                except (ProcessLookupError, OSError):
+                    pass
 
         try:
             await asyncio.wait_for(reader_task, timeout=2.0)

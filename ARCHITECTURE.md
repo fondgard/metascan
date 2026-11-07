@@ -4,7 +4,7 @@
 
 **MetaScan** (`mns`) is an async CLI OSINT tool that aggregates username search results
 from multiple external scanners, deduplicates and validates every found URL, and
-exports a polished HTML report.
+exports an interactive HTML report.
 
 ---
 
