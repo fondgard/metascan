@@ -1,7 +1,7 @@
 <a id="readme-top"></a>
 
 <div align="center">
-  <img src="https://i.imgur.com/zOcvR1j.jpeg" alt="MetaScan Banner" width="100%">
+  <img src=".github/assets/banner.jpg" alt="MetaScan Banner" width="100%">
   <br />
   <br />
   <h1>MetaScan</h1>
