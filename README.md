@@ -2,8 +2,6 @@
 
 <div align="center">
   <img src=".github/assets/banner.jfif" alt="MetaScan Banner" width="100%">
-  <br />
-  <br />
   <h1>MetaScan</h1>
   <p>
     <strong>Asynchronous OSINT Username Reconnaissance and Verification Tool</strong>
