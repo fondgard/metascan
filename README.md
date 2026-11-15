@@ -1,7 +1,7 @@
 <a id="readme-top"></a>
 
 <div align="center">
-  <img src=".github/assets/banner.jpg" alt="MetaScan Banner" width="100%">
+  <img src=".github/assets/banner.jfif" alt="MetaScan Banner" width="100%">
   <br />
   <br />
   <h1>MetaScan</h1>
